@@ -53,15 +53,21 @@ var signMessage = function(decryptedPrivateKeyObject, plaintextMessage, callback
 /* Verification */
 
 var verifyMessage = function(publicKeyArmored, signedMessage, callback, errorCallback) {
-    var publicKeyObjects = openpgp.key.readArmored(publicKeyArmored).keys;
-    var cleartextMessageObject = openpgp.cleartext.CleartextMessage(signedMessage);
-    openpgp.verifyClearSignedMessage(publicKeyObjects, cleartextMessageObject)
+    var publicKeyObject = openpgp.key.readArmored(publicKeyArmored).keys[0];
+    var cleartextMessageObject = openpgp.cleartext.readArmored(signedMessage);
+    openpgp.verifyClearSignedMessage(publicKeyObject, cleartextMessageObject)
     .then(function(result) {
-        if ('valid' in result) {
-            callback(true);
-        } else {
-            callback(false);
+        var validMessage = false;
+        if ('signatures' in result) {
+            var signatures = result['signatures'];
+            if (signatures.length > 0) {
+                var signature = signatures[0];
+                if ('valid' in signature) {
+                   validMessage = signature['valid'];
+                }
+            }
         }
+        callback(validMessage);
     }).catch(errorCallback);
 };
 
@@ -156,7 +162,7 @@ var main = function() {
             writeFile(messageDirectory + '/' + signedMessageFilename, signedMessage, 'signed message');
 
             verifyMessage(publicKeyArmored, signedMessage, function(isValid) {
-                console.log('note: signed message verification currently not supported');
+                console.log('verifying signed message... ' + isValid.toString() + '!');
             });
         }, function(error) {
             console.log(error); 
