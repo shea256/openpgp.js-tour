@@ -155,7 +155,7 @@ var main = function() {
         signMessage(decryptedPrivateKeyObject, options.plaintextMessage, function(signedMessage) {
             writeFile(messageDirectory + '/' + signedMessageFilename, signedMessage, 'signed message');
 
-            verifyMessage(signedMessage, publicKeyArmored, function(isValid) {
+            verifyMessage(publicKeyArmored, signedMessage, function(isValid) {
                 console.log('note: signed message verification currently not supported');
             });
         }, function(error) {
