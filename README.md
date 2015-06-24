@@ -1,2 +1,10 @@
-# openpgp.js-tutorial
+# Tour of openpgp.js
 
+Demonstrations include:
+
++ keypair generation
++ private key decryption
++ message encryption
++ message decryption
++ message signing
++ message signature verification *(not yet supported by openpgp.js)*

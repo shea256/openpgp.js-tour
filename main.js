@@ -1,4 +1,4 @@
-/* OpenPGP.js Tutorial */
+/* Tour of OpenPGP.js */
 
 var openpgp = require('openpgp'),
     mkdirp = require('mkdirp'),
