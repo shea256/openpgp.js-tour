@@ -1,98 +1,168 @@
 /* OpenPGP.js Tutorial */
 
-var openpgp = require('openpgp');
+var openpgp = require('openpgp'),
+    mkdirp = require('mkdirp'),
+    fs = require('fs')
+;
 
 /* Key Generation */
 
 var generateKeyPair = function(options, callback, errorCallback) {
-	openpgp.generateKeyPair(options).then(function(keypair) {
-	    privateKeyArmored = keypair.privateKeyArmored;
-	    publicKeyArmored = keypair.publicKeyArmored;
-
-	    callback(privateKeyArmored, publicKeyArmored);
-	}).catch(errorCallback);
+    openpgp.generateKeyPair(options).then(function(keypair) {
+        callback(keypair);
+    }).catch(errorCallback);
 };
 
 /* Key Decryption */
 
 var decryptPrivateKey = function(privateKeyArmoredEncrypted, passphrase) {
-	var privateKeyObject = openpgp.key.readArmored(privateKeyArmoredEncrypted).keys[0];
-	privateKeyObject.decrypt(passphrase);
-	return privateKeyObject;
+    var privateKeyObject = openpgp.key.readArmored(privateKeyArmoredEncrypted).keys[0];
+    privateKeyObject.decrypt(passphrase);
+    return privateKeyObject;
 };
 
 /* Encryption */
 
 var encryptMessage = function(publicKeyArmored, plaintextMessage, callback, errorCallback) {
-	var publicKeyObjects = openpgp.key.readArmored(publicKeyArmored).keys;
-	openpgp.encryptMessage(publicKeyObjects, plaintextMessage)
-	.then(function(encryptedMessageArmored) {
-		callback(encryptedMessageArmored);
-	}).catch(errorCallback);
+    var publicKeyObjects = openpgp.key.readArmored(publicKeyArmored).keys;
+    openpgp.encryptMessage(publicKeyObjects, plaintextMessage)
+    .then(function(encryptedMessageArmored) {
+        callback(encryptedMessageArmored);
+    }).catch(errorCallback);
 };
 
 /* Decryption */
 
 var decryptMessage = function(decryptedPrivateKeyObject, encryptedMessageArmored, callback, errorCallback) {
-	var encryptedMessageObject = openpgp.message.readArmored(encryptedMessageArmored);
-	openpgp.decryptMessage(privateKeyObject, encryptedMessageObject)
-	.then(function(plaintext) {
-	    callback(plaintext);
-	}).catch(errorCallback);
+    var encryptedMessageObject = openpgp.message.readArmored(encryptedMessageArmored);
+    openpgp.decryptMessage(decryptedPrivateKeyObject, encryptedMessageObject)
+    .then(function(plaintext) {
+        callback(plaintext);
+    }).catch(errorCallback);
 };
 
 /* Signing */
 
 var signMessage = function(decryptedPrivateKeyObject, plaintextMessage, callback, errorCallback) {
-	openpgp.signClearMessage(decryptedPrivateKeyObject, plaintextMessage)
-	.then(function(signedMessage) {
-		callback(signedMessage);
-	}).catch(errorCallback);
+    openpgp.signClearMessage(decryptedPrivateKeyObject, plaintextMessage)
+    .then(function(signedMessage) {
+        callback(signedMessage);
+    }).catch(errorCallback);
 };
+
+/* Verification */
 
 var verifyMessage = function(publicKeyArmored, signedMessage, callback, errorCallback) {
-	var publicKeyObjects = openpgp.key.readArmored(publicKeyArmored).keys;
-	var cleartextMessageObject = openpgp.cleartext.CleartextMessage(signedMessage);
-	openpgp.verifyClearSignedMessage(publicKeyObjects, cleartextMessageObject)
-	.then(function(result) {
-		if ('valid' in result) {
-			callback(true);
-		} else {
-			callback(false);
-		}
-	}).catch(errorCallback);
+    var publicKeyObjects = openpgp.key.readArmored(publicKeyArmored).keys;
+    var cleartextMessageObject = openpgp.cleartext.CleartextMessage(signedMessage);
+    openpgp.verifyClearSignedMessage(publicKeyObjects, cleartextMessageObject)
+    .then(function(result) {
+        if ('valid' in result) {
+            callback(true);
+        } else {
+            callback(false);
+        }
+    }).catch(errorCallback);
 };
 
+/* Utils */
+
+var writeFile = function(pathname, data, fileLabel) {
+    fs.writeFile(pathname, data, function(err) {
+        if (!err) {
+            console.log('writing ' + fileLabel + '...');
+        } else {
+            console.log(err);
+        }
+    });
+};
+
+/* Main */
+
 var main = function() {
-	var options = {
-		numBits: 2048,
-		userId: 'Jon Smith <jon.smith@example.org>',
-	    passphrase: 'super long and hard to guess secret',
-		plaintextMessage: 'Hello, World!'
-	};
+    var keyDirectory = 'keys',
+        messageDirectory = 'messages',
+        privateKeyFilename = 'privateKey.asc',
+        publicKeyFilename = 'publicKey.asc',
+        signedMessageFilename = 'signedMessage.asc',
+        encryptedMessageFilename = 'encryptedMessage.asc',
+        decryptedMessageFilename = 'decryptedMessage.asc'
+    ;
 
-	generateKeyPair(options, function(privateKeyArmored, publicKeyArmored) {
-		console.log(privateKeyArmored);
-		console.log(publicKeyArmored);
+    var options = {
+        numBits: 2048,
+        userId: 'Jon Smith <jon.smith@example.org>',
+        passphrase: 'super long and hard to guess secret',
+        plaintextMessage: 'Hello, World!'
+    };
 
-		var decryptedPrivateKeyObject = decryptPrivateKey(privateKeyArmored, options.passphrase);
+    var mkdirPromise = new Promise(function(resolve, reject) {
+      mkdirp(keyDirectory, function(err) {
+        if (err) {
+          console.log(err);
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
 
-		encryptMessage(publicKeyArmored, options.plaintextMessage, function(encryptedMessageArmored) {
-			console.log(encryptedMessageArmored);
-			decryptMessage(decryptedPrivateKeyObject, encryptedMessageArmored, function(decryptedPlaintextMessage) {
-				console.log(decryptedPlaintextMessage);
-			});
-		});
+    var mkdirPromise2 = new Promise(function(resolve, reject) {
+      mkdirp(messageDirectory, function(err) {
+        if (err) {
+          console.log(err);
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
 
-		signMessage(decryptedPrivateKeyObject, options.plaintextMessage, function(signedMessage) {
-			console.log(signedMessage);
-			verifyMessage(signedMessage, publicKeyArmored, function(isValid) {
-				console.log(isValid);
-			});
-		}, function(error) {
-			console.log(error);	
-		});
-	});
+    var keypairPromise = new Promise(function(resolve, reject) {
+        Promise.all([mkdirPromise, mkdirPromise2]).then(function() {
+            generateKeyPair(options, function(keypair) {
+                resolve(keypair);
+            }, function(error) {
+                reject(error);
+            });
+        });
+    });
+
+    keypairPromise.then(function(keypair) {
+        var publicKeyArmored = keypair.publicKeyArmored;
+        var privateKeyArmored = keypair.privateKeyArmored;
+        var decryptedPrivateKeyObject = decryptPrivateKey(privateKeyArmored, options.passphrase);
+
+        writeFile(keyDirectory + '/' + privateKeyFilename, privateKeyArmored, 'private key');
+        writeFile(keyDirectory + '/' + publicKeyFilename, publicKeyArmored, 'public key');
+
+        encryptMessage(publicKeyArmored, options.plaintextMessage, function(encryptedMessageArmored) {
+            writeFile(messageDirectory + '/' + encryptedMessageFilename, encryptedMessageArmored, 'encrypted message');
+
+            decryptMessage(decryptedPrivateKeyObject, encryptedMessageArmored, function(decryptedPlaintextMessage) {
+                writeFile(messageDirectory + '/' + decryptedMessageFilename, decryptedPlaintextMessage, 'decrypted message');
+            });
+        }, function(error) {
+            console.log(error);
+        });
+    });
+
+    keypairPromise.then(function(keypair) {
+        var publicKeyArmored = keypair.publicKeyArmored;
+        var privateKeyArmored = keypair.privateKeyArmored;
+        var decryptedPrivateKeyObject = decryptPrivateKey(privateKeyArmored, options.passphrase);
+
+        signMessage(decryptedPrivateKeyObject, options.plaintextMessage, function(signedMessage) {
+            writeFile(messageDirectory + '/' + signedMessageFilename, signedMessage, 'signed message');
+
+            verifyMessage(signedMessage, publicKeyArmored, function(isValid) {
+                console.log('note: signed message verification currently not supported');
+            });
+        }, function(error) {
+            console.log(error); 
+        });
+    });
+
 };
 
 main();
