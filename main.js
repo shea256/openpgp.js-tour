@@ -96,7 +96,7 @@ var main = function() {
     ;
 
     var options = {
-        numBits: 4096,
+        numBits: 2048,
         userId: 'Jon Smith <jon.smith@example.org>',
         passphrase: 'super long and hard to guess secret',
         plaintextMessage: 'Hello, World!'
