@@ -96,37 +96,49 @@ var main = function() {
     ;
 
     var options = {
-        numBits: 2048,
+        numBits: 4096,
         userId: 'Jon Smith <jon.smith@example.org>',
         passphrase: 'super long and hard to guess secret',
         plaintextMessage: 'Hello, World!'
     };
 
-    var mkdirPromise = new Promise(function(resolve, reject) {
-      mkdirp(keyDirectory, function(err) {
-        if (err) {
-          console.log(err);
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
+    var readFilePromise1 = new Promise(function(resolve, reject) {
+        fs.readFile('keys/privateKey.asc', function(err, privateKeyArmored) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(privateKeyArmored);
+            }
+        });
     });
 
-    var mkdirPromise2 = new Promise(function(resolve, reject) {
-      mkdirp(messageDirectory, function(err) {
-        if (err) {
-          console.log(err);
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
+    var readFilePromise2 = new Promise(function(resolve, reject) {
+        fs.readFile('keys/publicKey.asc', function(err, publicKeyArmored) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(publicKeyArmored);
+            }
+        });
     });
 
     var keypairPromise = new Promise(function(resolve, reject) {
-        Promise.all([mkdirPromise, mkdirPromise2]).then(function() {
+        Promise.all([readFilePromise1, readFilePromise2])
+        .then(function(responses) {
+            var privateKeyArmored = responses[0],
+                publicKeyArmored = responses[1];
+            console.log('found public and private keypairs!');
+            var keypair = {
+                publicKeyArmored: publicKeyArmored.toString(),
+                privateKeyArmored: privateKeyArmored.toString()
+            };
+            resolve(keypair);
+        })
+        .catch(function(errors) {
+            console.log('generating keypair... (this may take a while)');
             generateKeyPair(options, function(keypair) {
+                writeFile(keyDirectory + '/' + privateKeyFilename, keypair.privateKeyArmored, 'private key');
+                writeFile(keyDirectory + '/' + publicKeyFilename, keypair.publicKeyArmored, 'public key');
                 resolve(keypair);
             }, function(error) {
                 reject(error);
@@ -135,12 +147,9 @@ var main = function() {
     });
 
     keypairPromise.then(function(keypair) {
-        var publicKeyArmored = keypair.publicKeyArmored;
-        var privateKeyArmored = keypair.privateKeyArmored;
-        var decryptedPrivateKeyObject = decryptPrivateKey(privateKeyArmored, options.passphrase);
-
-        writeFile(keyDirectory + '/' + privateKeyFilename, privateKeyArmored, 'private key');
-        writeFile(keyDirectory + '/' + publicKeyFilename, publicKeyArmored, 'public key');
+        var publicKeyArmored = keypair.publicKeyArmored,
+            privateKeyArmored = keypair.privateKeyArmored,
+            decryptedPrivateKeyObject = decryptPrivateKey(privateKeyArmored, options.passphrase);
 
         encryptMessage(publicKeyArmored, options.plaintextMessage, function(encryptedMessageArmored) {
             writeFile(messageDirectory + '/' + encryptedMessageFilename, encryptedMessageArmored, 'encrypted message');
@@ -154,9 +163,9 @@ var main = function() {
     });
 
     keypairPromise.then(function(keypair) {
-        var publicKeyArmored = keypair.publicKeyArmored;
-        var privateKeyArmored = keypair.privateKeyArmored;
-        var decryptedPrivateKeyObject = decryptPrivateKey(privateKeyArmored, options.passphrase);
+        var publicKeyArmored = keypair.publicKeyArmored,
+            privateKeyArmored = keypair.privateKeyArmored,
+            decryptedPrivateKeyObject = decryptPrivateKey(privateKeyArmored, options.passphrase);
 
         signMessage(decryptedPrivateKeyObject, options.plaintextMessage, function(signedMessage) {
             writeFile(messageDirectory + '/' + signedMessageFilename, signedMessage, 'signed message');

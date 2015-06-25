@@ -1,3 +1,4 @@
 node_modules
-*.asc
+keys/*.asc
+messages/*.asc
 unused
