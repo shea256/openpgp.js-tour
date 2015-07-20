@@ -4,6 +4,7 @@
   "description": "",
   "main": "tutorial.js",
   "dependencies": {
+    "mkdirp": "^0.5.1",
     "openpgp": "^1.0.1"
   },
   "devDependencies": {},
