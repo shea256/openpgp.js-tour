@@ -7,4 +7,4 @@ Demonstrations include:
 + message encryption
 + message decryption
 + message signing
-+ message signature verification *(not yet supported by openpgp.js)*
++ message signature verification
